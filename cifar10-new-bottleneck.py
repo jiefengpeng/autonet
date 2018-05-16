@@ -12,7 +12,6 @@ from tensorpack import *
 from tensorpack.tfutils.symbolic_functions import *
 from tensorpack.tfutils.summary import *
 from tensorflow.python.training import moving_averages
-from MyTrainer import MyTrainer
 from tensorpack.utils.gpu import get_nr_gpu
 
 """
