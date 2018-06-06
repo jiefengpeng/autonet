@@ -1,0 +1,10 @@
+TF_INC=$(python -c 'import tensorflow as tf; print(tf.sysconfig.get_include())')
+TF_LIB=$(python -c 'import tensorflow as tf; print(tf.sysconfig.get_lib())')
+g++ -std=c++11 -shared binary_out.cc -o binary_out.so -fPIC -I$TF_INC -I$TF_INC/external/nsync/public -L$TF_LIB -ltensorflow_framework -O2
+
+# if g++ version > 5.0, add '-D_GLIBCXX_USE_CXX11_ABI=0'
+
+# Usage
+import tensorflow as tf
+module = tf.load_op_library('./binary.so')
+module.binary_out()

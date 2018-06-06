@@ -11,8 +11,11 @@ from tensorpack import *
 from tensorpack.tfutils.symbolic_functions import *
 from tensorpack.tfutils.summary import *
 from tensorflow.python.training import moving_averages
-from MyTrainer import MyTrainer
 from tensorpack.utils.gpu import get_nr_gpu
+
+from _binary_out_grad import _binary_out_grad
+user_module = tf.load_op_library('./binary_out.so')
+binary_out = user_module.binary_out
 
 """
 CIFAR10 DenseNet example. See: http://arxiv.org/abs/1608.06993
@@ -61,10 +64,6 @@ class Model(ModelDesc):
                 #m = tf.image.resize_images(m, [KERNAL_SIZE,KERNAL_SIZE]) # N*ks*ks*1
                 m = tf.reduce_mean(m, 0) # C
                 #m = 1 / ( 1 + tf.exp(-10 * m))
-                m_shortcut = m / tf.abs(m)
-                m_shortcut = tf.nn.relu(m_shortcut)
-                m = tf.nn.relu(m)
-                m = m + m_shortcut
                 update_mask = moving_averages.assign_moving_average(moving_mask, m, 0.9,
                                   zero_debias=False, name='mask_con_ema_op')
                 tf.add_to_collection(tf.GraphKeys.UPDATE_OPS, update_mask)
@@ -190,7 +189,7 @@ def get_data(train_or_test):
     return ds
 
 def get_config():
-    log_dir = 'train_log/cifar10-concat-relu-depth%s' % (str(args.depth))
+    log_dir = 'train_log/cifar10-concat-baseline-depth%s' % (str(args.depth))
     logger.set_logger_dir(log_dir, action='n')
     nr_tower = max(get_nr_gpu(), 1)
 
@@ -205,7 +204,7 @@ def get_config():
         #    [ScalarStats('cost'), ClassificationError()]),
         ScheduledHyperParamSetter('learning_rate',
                                   [(0, 0.1), (args.drop_1, 0.01), (args.drop_2, 0.001)]),
-        TensorPrinter(['block1/dense_layer.{}/mask_con/EMA:0'.format(i) for i in xrange(1,N)] + ['block2/dense_layer.{}/mask_con/EMA:0'.format(j) for j in xrange(N)] + ['block3/dense_layer.{}/mask_con/EMA:0'.format(k) for k in xrange(N)])
+        #TensorPrinter(['block1/dense_layer.{}/mask_con/EMA:0'.format(i) for i in xrange(1,N)] + ['block2/dense_layer.{}/mask_con/EMA:0'.format(j) for j in xrange(N)] + ['block3/dense_layer.{}/mask_con/EMA:0'.format(k) for k in xrange(N)])
     ]
     if nr_tower == 1:
         callbacks.append(InferenceRunner(dataset_test,
@@ -235,7 +234,7 @@ if __name__ == '__main__':
     if args.gpu:
         os.environ['CUDA_VISIBLE_DEVICES'] = args.gpu
 
-    nr_tower = 0
+    nr_tower = 1
     if args.gpu:
         nr_tower = len(args.gpu.split(','))
 
