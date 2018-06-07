@@ -16,6 +16,7 @@ checkpoint
 *.txt
 *.tgz
 *.gz
+*.h5
 
 # my personal stuff
 snippet
