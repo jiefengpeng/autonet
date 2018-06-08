@@ -153,7 +153,7 @@ class Model(ModelDesc):
         #cost = tf.nn.sparse_softmax_cross_entropy_with_logits(logits=logits, labels=label)
         #cost = tf.reduce_mean(cost, name='cross_entropy_loss')
         #triplet_cost, fraction = batch_all_triplet_loss(label, embedings, margin=0.5, squared=False)
-        cost, fraction = batch_all_triplet_loss(label, embedings, margin=0.5, squared=False)
+        cost, fraction = batch_all_triplet_loss(label, embedings, margin=0.5, squared=True)
 
 
         wrong = prediction_incorrect(logits, label)

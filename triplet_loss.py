@@ -149,21 +149,26 @@ def batch_all_triplet_loss(labels, embeddings, margin, squared=False):
     # Uses broadcasting where the 1st argument has shape (batch_size, batch_size, 1)
     # and the 2nd (batch_size, 1, batch_size)
     triplet_loss = anchor_positive_dist - anchor_negative_dist + margin
+    triplet_loss_without_margin = anchor_positive_dist - anchor_negative_dist
 
     # Put to zero the invalid triplets
     # (where label(a) != label(p) or label(n) == label(a) or a == p)
     mask = _get_triplet_mask(labels)
     mask = tf.to_float(mask)
     triplet_loss = tf.multiply(mask, triplet_loss)
+    triplet_loss_without_margin = tf.multiply(mask, triplet_loss_without_margin)
 
     # Remove negative losses (i.e. the easy triplets)
     triplet_loss = tf.maximum(triplet_loss, 0.0)
+    triplet_loss_without_margin = tf.maximum(triplet_loss_without_margin, 0.0)
 
     # Count number of positive triplets (where triplet_loss > 0)
     valid_triplets = tf.to_float(tf.greater(triplet_loss, 1e-16))
+    valid_triplets_without_margin = tf.to_float(tf.greater(triplet_loss_without_margin, 1e-16))
     num_positive_triplets = tf.reduce_sum(valid_triplets)
+    num_positive_triplets_without_margin = tf.reduce_sum(valid_triplets_without_margin)
     num_valid_triplets = tf.reduce_sum(mask)
-    fraction_positive_triplets = num_positive_triplets / (num_valid_triplets + 1e-16)
+    fraction_positive_triplets = num_positive_triplets_without_margin / (num_valid_triplets + 1e-16)
     fraction_positive_triplets = tf.identity(fraction_positive_triplets, name='fraction_positive_triplets')
 
     # Get final mean triplet loss over the positive valid triplets
