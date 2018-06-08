@@ -51,63 +51,23 @@ class Model(ModelDesc):
                           nl=tf.identity, use_bias=False,
                           W_init=tf.random_normal_initializer(stddev=np.sqrt(2.0/9/channel)))
       
-        def get_mask(l, channel):
-            moving_mask = tf.get_variable('mask_con/EMA', [channel],
-                                          initializer=tf.constant_initializer(1.),
-                                          trainable=False)
-            ctx = get_current_tower_context()
-            if ctx.is_training:
-                m = GlobalAvgPooling('global_m', l) 
-                m = FullyConnected('fc_con_1', m, out_dim=channel*2, nl=tf.nn.relu,) 
-                                   #use_bias=False) 
-                m = FullyConnected('fc_con_2', m, out_dim=channel)#, use_bias=False) 
-
-                #m = Conv2D('conv_m', l, 1, 3, stride=1, use_bias=False, nl=tf.identity)
-                #m = LayerNorm('ln_m', m) # N*H*W*1
-                #m = tf.image.resize_images(m, [KERNAL_SIZE,KERNAL_SIZE]) # N*ks*ks*1
-                m = tf.reduce_mean(m, 0) # C
-                m = binary_out(m)
-                #m = 1 / ( 1 + tf.exp(-10 * m))
-                update_mask = moving_averages.assign_moving_average(moving_mask, m, 0.9,
-                                  zero_debias=False, name='mask_con_ema_op')
-                tf.add_to_collection(tf.GraphKeys.UPDATE_OPS, update_mask)
-            else:
-                m = moving_mask
-            if ctx.is_main_training_tower:
-                tf.contrib.framework.add_model_variable(moving_mask)
-
-            m = tf.stack([m]*self.growthRate, 0)
-            m = tf.transpose(m, [1,0])
-            m = tf.reshape(m, [1,1,channel*self.growthRate,1]) 
-            return m
-            
         def add_layer(name, l):
             in_shape = l.get_shape().as_list()
             in_channel = in_shape[3]
             with tf.variable_scope(name) as scope:
                 c = BatchNorm('bn1', l)
                 c = tf.nn.relu(c)
-                out_channel = self.growthRate
-                filter_shape = [3, 3, in_channel, out_channel]
-                stride = [1, 1, 1, 1]
-                W_init = tf.random_normal_initializer(stddev=np.sqrt(2.0/9/out_channel))
-                W = tf.get_variable('conv1/W', filter_shape, initializer=W_init)
-
-                m = get_mask(c, in_channel // self.growthRate)
-
-                W = W * m  # H*W*C_i*C_o
-                c = tf.nn.conv2d(c, W, stride, 'SAME', data_format='NHWC')
+                c = conv('conv1', c, self.growthRate, 1)
                 l = tf.concat([c, l], 3)
             return l
 
         def add_transition(name, l):
             shape = l.get_shape().as_list()
             in_channel = shape[3]
-            group = 1#in_channel / self.growthRate
             with tf.variable_scope(name) as scope:
                 l = BatchNorm('bn1', l)
                 l = tf.nn.relu(l)
-                l = Conv2D('conv1', l, in_channel, 1, stride=1, use_bias=False, nl=tf.nn.relu, split=group)
+                l = Conv2D('conv1', l, in_channel, 1, stride=1, use_bias=False, nl=tf.nn.relu)
                 l = AvgPooling('pool', l, 2)
                 #l = MaxPooling('pool', l, 2)
             return l
@@ -117,13 +77,7 @@ class Model(ModelDesc):
             l = conv('conv0', image, self.growthRate, 1)
             with tf.variable_scope('block1') as scope:
 
-                with tf.variable_scope('dense_layer.0'):
-                    c = BatchNorm('bn1', l)
-                    c = tf.nn.relu(c)
-		    c = conv('conv1', c, self.growthRate, 1)
-		    l = tf.concat([c, l], 3)
-
-                for i in range(1, self.N):
+                for i in range(self.N):
                     l = add_layer('dense_layer.{}'.format(i), l)
                 l = add_transition('transition1', l)
 
