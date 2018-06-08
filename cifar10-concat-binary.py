@@ -100,7 +100,7 @@ class Model(ModelDesc):
         def add_transition(name, l):
             shape = l.get_shape().as_list()
             in_channel = shape[3]
-            group = in_channel / self.growthRate
+            group = 1#in_channel / self.growthRate
             with tf.variable_scope(name) as scope:
                 l = BatchNorm('bn1', l)
                 l = tf.nn.relu(l)
@@ -191,7 +191,7 @@ def get_data(train_or_test):
     return ds
 
 def get_config():
-    log_dir = 'train_log/cifar10-concat-binary-group_trans-depth%s' % (str(args.depth))
+    log_dir = 'train_log/cifar10-concat-binary-depth%s' % (str(args.depth))
     logger.set_logger_dir(log_dir, action='n')
     nr_tower = max(get_nr_gpu(), 1)
 

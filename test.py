@@ -36,12 +36,15 @@ os.environ['CUDA_VISIBLE_DEVICES'] = '0'
 
 user_module = tf.load_op_library('./binary_out.so')
 binary_out = user_module.binary_out
-w1 = tf.Variable([1.1, -1.2, -0.3, 0.5])
-res = binary_out(w1)
-grads = tf.gradients(res, [w1])
+x = tf.constant([1.1, -1.2, -0.3, 0.5])
+w0 = tf.Variable([1., 1., 1., 1.])
+y = x * w0
+res = binary_out(y)
+grads = tf.gradients(res, [w0])
 with tf.Session() as sess:
     tf.global_variables_initializer().run()
-    print(w1.eval())
+    print(x.eval())
+    print(w0.eval())
     re = sess.run(res)
     print(re)
     gra = sess.run(grads)
